@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Capybara Chatbot Demo - Częstochowa</title>
+  <style>
+    body {
+      margin: 0;
+      font-family: system-ui, sans-serif;
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      height: 100vh;
+      color: white;
+    }
+    .demo-content {
+      padding: 40px;
+      max-width: 800px;
+    }
+    h1 { margin: 0 0 16px 0; }
+    .info {
+      background: rgba(255,255,255,0.1);
+      padding: 16px;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    
+    /* Capybara Chatbot Styles */
+    #capy-chatbot {
+      position: fixed;
+      width: 80px;
+      height: 80px;
+      z-index: 9999;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      user-select: none;
+      filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3));
+    }
+    #capy-chatbot.sitting {
+      cursor: default;
+      animation: smoke 2s infinite;
+    }
+    @keyframes smoke {
+      0%, 100% { filter: drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+      50% { filter: drop-shadow(0 4px 12px rgba(255,255,255,0.2)) drop-shadow(0 4px 8px rgba(0,0,0,0.3)); }
+    }
+    #capy-window {
+      position: fixed;
+      bottom: 100px;
+      right: 20px;
+      width: 350px;
+      height: 500px;
+      background: white;
+      border-radius: 16px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.3);
+      display: none;
+      flex-direction: column;
+      z-index: 9998;
+      color: #333;
+    }
+    #capy-window.active {
+      display: flex;
+    }
+    #capy-header {
+      background: #2E7D32;
+      color: white;
+      padding: 12px 16px;
+      border-radius: 16px 16px 0 0;
+      font-weight: 600;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    #capy-close {
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+    }
+    #capy-messages {
+      flex: 1;
+      padding: 12px;
+      overflow-y: auto;
+      font-size: 14px;
+      display: flex;
+      flex-direction: column;
+    }
+    .capy-msg {
+      margin: 8px 0;
+      padding: 8px 12px;
+      border-radius: 12px;
+      max-width: 80%;
+      line-height: 1.4;
+    }
+    .capy-msg.bot {
+      background: #F1F8E9;
+      align-self: flex-start;
+    }
+    .capy-msg.user {
+      background: #E3F2FD;
+      align-self: flex-end;
+    }
+    #capy-input-area {
+      display: flex;
+      padding: 8px;
+      border-top: 1px solid #eee;
+    }
+    #capy-input {
+      flex: 1;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      padding: 8px 12px;
+      outline: none;
+      font-size: 14px;
+    }
+    #capy-send {
+      background: #2E7D32;
+      color: white;
+      border: none;
+      border-radius: 20px;
+      padding: 8px 16px;
+      margin-left: 8px;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    #capy-send:hover {
+      background: #1B5E20;
+    }
+  </style>
+</head>
+<body>
+  <div class="demo-content">
+    <h1>Demo: Capybara z Częstochowy 🦫</h1>
+    <div class="info">
+      <p><strong>Jak to działa:</strong></p>
+      <p>1. Capybara lata po ekranie w czapce i z fajką</p>
+      <p>2. Kliknij ją - usiądzie i otworzy czat</p>
+      <p>3. Zapytaj o "autobusy", "restauracje" albo "atrakcje"</p>
+      <p>4. Zamknij X żeby znowu zaczęła latać</p>
+    </div>
+  </div>
+
+  <!-- Capybara -->
+  <div id="capy-chatbot">
+    <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+      <!-- Ciało capybary -->
+      <ellipse cx="50" cy="65" rx="30" ry="20" fill="#8D6E63"/>
+      <!-- Głowa -->
+      <circle cx="50" cy="40" r="18" fill="#8D6E63"/>
+      <!-- Czapka z daszkiem -->
+      <path d="M35 30 Q50 20 65 30 L60 25 Q50 18 40 25 Z" fill="#D32F2F"/>
+      <ellipse cx="50" cy="32" rx="16" ry="4" fill="#B71C1C"/>
+      <!-- Fajka -->
+      <rect x="65" y="42" width="15" height="3" fill="#5D4037" rx="1"/>
+      <circle cx="80" cy="43" r="3" fill="#5D4037"/>
+      <circle cx="82" cy="40" r="1.5" fill="#DDD" opacity="0.6">
+        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
+      </circle>
+      <!-- Oczy -->
+      <circle cx="45" cy="38" r="2" fill="#000"/>
+      <circle cx="55" cy="38" r="2" fill="#000"/>
+      <!-- Nos -->
+      <ellipse cx="50" cy="44" rx="3" ry="2" fill="#4E342E"/>
+      <!-- Łapki -->
+      <ellipse cx="35" cy="80" rx="6" ry="4" fill="#6D4C41"/>
+      <ellipse cx="65" cy="80" rx="6" ry="4" fill="#6D4C41"/>
+    </svg>
+  </div>
+
+  <!-- Okno czatu -->
+  <div id="capy-window">
+    <div id="capy-header">
+      <span>🦫 Capybara z Częstochowy</span>
+      <span id="capy-close">×</span>
+    </div>
+    <div id="capy-messages">
+      <div class="capy-msg bot">Siema! Jestem capybara z Jasnej Góry 😎 Pytaj o autobusy MPK, restauracje, co zwiedzić w Częstochowie. W czym mogę pomóc?</div>
+    </div>
+    <div id="capy-input-area">
+      <input type="text" id="capy-input" placeholder="Napisz pytanie...">
+      <button id="capy-send">Wyślij</button>
+    </div>
+  </div>
+
+  <script>
+  (function() {
+    const capy = document.getElementById('capy-chatbot');
+    const capyWindow = document.getElementById('capy-window');
+    const capyClose = document.getElementById('capy-close');
+    const capyInput = document.getElementById('capy-input');
+    const capySend = document.getElementById('capy-send');
+    const capyMessages = document.getElementById('capy-messages');
+    
+    let isSitting = false;
+    let posX = Math.random() * (window.innerWidth - 100);
+    let posY = Math.random() * (window.innerHeight - 100);
+    let velX = (Math.random() - 0.5) * 2.5;
+    let velY = (Math.random() - 0.5) * 2.5;
+    
+    const czestochowaKnowledge = {
+      autobusy: `Główne linie MPK Częstochowa:
+• 10: Wyczerpy - Dźbów przez centrum i Dworzec
+• 11: Kucelin - Raków 
+• 12: Północ - Parkitka
+• 24: Wyczerpy - Mirów
+• 31: Częstochowa - Blachownia
+      
+Bilet 20min = 3,40zł, 40min = 4,60zł
+Rozkład: mpk.czest.pl lub aplikacja JakDojade`,
+      
+      restauracje: `Polecane miejscówki w Częstochowie:
+• Browar Czenstochovia - regionalne piwo + żeberka, ul. Sikorskiego 34
+• Astoria - klasyka polska, schabowy jak u babci, Al. NMP 21
+• Shuk - najlepszy hummus w mieście, ul. Dąbrowskiego 12
+• Gruszka z Pietruszką - nowoczesna kuchnia, ul. Śląska 12
+• Sushi Koi - jak masz ochotę na Japonię, Al. Kościuszki`,
+      
+      atrakcje: `Co zobaczyć w Częstochowie:
+• Jasna Góra - wiadomo, sanktuarium + mury obronne
+• Muzeum Produkcji Zapałek - jedyne takie w Europie
+• Park Staszica pod Jasną Górą - idealny na spacer
+• Filharmonia Częstochowska jak lubisz kulturę
+• Latem: Zalew Poraj 20km, plaża + rowery wodne`,
+      
+      parking: `Parkowanie w centrum: Strefa płatna 8:00-18:00 pon-pt. 3zł/h. Darmowe parkingi: przy Realu na Północy, przy M1. Pod Jasną Górą parking płatny 10zł/dzień.`,
+      
+      default: `Pytaj mnie o: autobusy MPK, restauracje, atrakcje, parking, urzędy. Znam Częstochowę jak własną kieszeń 🦫`
+    };
+
+    function moveCapy() {
+      if (isSitting) return;
+      
+      posX += velX;
+      posY += velY;
+      
+      if (posX <= 0 || posX >= window.innerWidth - 80) {
+        velX *= -1;
+        velX += (Math.random() - 0.5) * 0.5; // losowa zmiana
+      }
+      if (posY <= 0 || posY >= window.innerHeight - 80) {
+        velY *= -1;
+        velY += (Math.random() - 0.5) * 0.5;
+      }
+      
+      // Ogranicz prędkość
+      velX = Math.max(-3, Math.min(3, velX));
+      velY = Math.max(-3, Math.min(3, velY));
+      
+      capy.style.left = posX + 'px';
+      capy.style.top = posY + 'px';
+      capy.style.transform = velX > 0 ? 'scaleX(-1)' : 'scaleX(1)';
+      
+      requestAnimationFrame(moveCapy);
+    }
+    
+    function capyRespond(text) {
+      const msg = text.toLowerCase();
+      let response = czestochowaKnowledge.default;
+      
+      if (msg.includes('autobus') || msg.includes('mpk') || msg.includes('tramwaj') || msg.includes('dojad')) {
+        response = czestochowaKnowledge.autobusy;
+      } else if (msg.includes('jedz') || msg.includes('restaur') || msg.includes('obiad') || msg.includes('pizza') || msg.includes('gdzie zje')) {
+        response = czestochowaKnowledge.restauracje;
+      } else if (msg.includes('zwiedz') || msg.includes('atrakc') || msg.includes('jasna') || msg.includes('co robić') || msg.includes('zobaczyć')) {
+        response = czestochowaKnowledge.atrakcje;
+      } else if (msg.includes('parking') || msg.includes('parkow') || msg.includes('auto') || msg.includes('zaparkow')) {
+        response = czestochowaKnowledge.parking;
+      }
+      
+      addMessage(response, 'bot');
+    }
+    
+    function addMessage(text, sender) {
+      const msg = document.createElement('div');
+      msg.className = `capy-msg ${sender}`;
+      msg.textContent = text;
+      capyMessages.appendChild(msg);
+      capyMessages.scrollTop = capyMessages.scrollHeight;
+    }
+    
+    function handleSend() {
+      const text = capyInput.value.trim();
+      if (!text) return;
+      addMessage(text, 'user');
+      capyInput.value = '';
+      setTimeout(() => capyRespond(text), 600);
+    }
+    
+    capy.addEventListener('click', () => {
+      if (!isSitting) {
+        isSitting = true;
+        capy.classList.add('sitting');
+        capyWindow.classList.add('active');
+        capy.style.left = (window.innerWidth - 150) + 'px';
+        capy.style.top = (window.innerHeight - 200) + 'px';
+        capy.style.transform = 'scaleX(1)';
+      }
+    });
+    
+    capyClose.addEventListener('click', () => {
+      isSitting = false;
+      capy.classList.remove('sitting');
+      capyWindow.classList.remove('active');
+      moveCapy();
+    });
+    
+    capySend.addEventListener('click', handleSend);
+    capyInput.addEventListener('keypress', e => {
+      if (e.key === 'Enter') handleSend();
+    });
+    
+    // Start
+    capy.style.left = posX + 'px';
+    capy.style.top = posY + 'px';
+    moveCapy();
+  })();
+  </script>
+</body>
+</html>
