@@ -3,15 +3,14 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Capybara z Osiedla PRO</title>
+  <title>Capybara API + Spray</title>
   <style>
     @import url('https://fonts.googleapis.com/css2?family=Bangers&family=Permanent+Marker&display=swap');
     
     body {
       margin: 0;
       font-family: 'Permanent Marker', cursive;
-      background: 
-        repeating-linear-gradient(45deg, #1a1a1a, #1a1a1a 10px, #2a2a2a 10px, #2a2a2a 20px);
+      background: repeating-linear-gradient(45deg, #1a1a1a, #1a1a1a 10px, #2a2a2a 10px, #2a2a2a 20px);
       height: 100vh;
       color: #fff;
       overflow: hidden;
@@ -26,7 +25,7 @@
       font-size: 48px;
       margin: 0 0 16px 0;
       color: #FF1744;
-      text-shadow: 3px 3px 0 #000, -1px -1px 0 #000, 1px -1px 0 #000, -1px 1px 0 #000;
+      text-shadow: 3px 3px 0 #000;
       transform: rotate(-2deg);
     }
     .info {
@@ -35,6 +34,13 @@
       border: 3px solid #FF1744;
       transform: rotate(1deg);
       box-shadow: 5px 5px 0 #000;
+    }
+    .api-status {
+      margin-top: 12px;
+      padding: 8px;
+      background: #000;
+      border: 2px solid #00E5FF;
+      font-size: 12px;
     }
     
     #capy-chatbot {
@@ -59,22 +65,46 @@
       to { transform: translateY(-5px) rotate(2deg); }
     }
     
-    /* Spray tag animacja */
+    /* SPRAY CANVAS - taguje po całym ekranie */
+    #spray-canvas {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9996;
+    }
+    
+    /* Spray particle */
+    .spray-particle {
+      position: fixed;
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      pointer-events: none;
+      z-index: 9997;
+      animation: spraySpread 1.5s ease-out forwards;
+    }
+    @keyframes spraySpread {
+      0% { opacity: 1; transform: scale(0); }
+      100% { opacity: 0; transform: scale(3); }
+    }
+    
     .spray-tag {
       position: fixed;
       font-family: 'Bangers', cursive;
-      font-size: 32px;
-      color: #FF1744;
-      text-shadow: 2px 2px 0 #000;
+      font-size: 42px;
+      text-shadow: 3px 3px 0 #000;
       opacity: 0;
       pointer-events: none;
       z-index: 9997;
-      animation: sprayFade 2s ease-out forwards;
+      animation: sprayFade 3s ease-out forwards;
     }
     @keyframes sprayFade {
-      0% { opacity: 0; transform: scale(0.5) rotate(-10deg); }
-      20% { opacity: 1; transform: scale(1.2) rotate(5deg); }
-      100% { opacity: 0; transform: scale(1) rotate(0deg); }
+      0% { opacity: 0; transform: scale(0.3) rotate(-15deg); }
+      15% { opacity: 1; transform: scale(1.3) rotate(8deg); }
+      100% { opacity: 0.7; transform: scale(1) rotate(0deg); }
     }
     
     #capy-window {
@@ -112,10 +142,6 @@
       line-height: 1;
       font-weight: bold;
     }
-    #capy-close:hover {
-      color: #fff;
-      transform: scale(1.2);
-    }
     #capy-messages {
       flex: 1;
       padding: 12px;
@@ -146,6 +172,10 @@
       box-shadow: 3px 3px 0 #000;
       transform: rotate(1deg);
     }
+    .typing {
+      opacity: 0.7;
+      font-style: italic;
+    }
     #capy-input-area {
       display: flex;
       padding: 12px;
@@ -173,32 +203,23 @@
       font-size: 18px;
       box-shadow: 3px 3px 0 #333;
     }
-    #capy-send:hover {
-      background: #00E5FF;
-      color: #000;
-      transform: translate(-2px, -2px);
-      box-shadow: 5px 5px 0 #333;
-    }
   </style>
 </head>
 <body>
   <div class="demo-content">
-    <h1>CAPYBARA Z OSIEDLA PRO</h1>
+    <h1>CAPYBARA API + SPRAY</h1>
     <div class="info">
-      <p><strong>YO YO YO MORDO!</strong></p>
-      <p>1. Klika = "YO YO YO"</p>
-      <p>2. Siada = taguje sprayem "SZTOS"</p>
-      <p>3. Nawija z bluzgami jak z bloków</p>
-      <p>4. X = nara, leci dalej</p>
+      <p><strong>YO MORDO!</strong></p>
+      <p>1. Klik = YO YO YO + API call</p>
+      <p>2. Siedzi = taguje sprayem cały ekran</p>
+      <p>3. Nawija z osiedla przez API</p>
+      <div class="api-status" id="api-status">API: Gotowe do jazdy</div>
     </div>
   </div>
 
-  <!-- Audio: YO YO YO -->
-  <audio id="yoyo-sound" preload="auto">
-    <source src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=" type="audio/wav">
-  </audio>
+  <canvas id="spray-canvas"></canvas>
+  <audio id="yoyo-sound" preload="auto"></audio>
 
-  <!-- Graffiti Capybara SVG -->
   <div id="capy-chatbot">
     <svg viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
       <ellipse cx="50" cy="65" rx="32" ry="22" fill="#000" opacity="0.3"/>
@@ -216,21 +237,18 @@
       <circle cx="50" cy="55" r="1.5" fill="#FFD600"/>
       <circle cx="58" cy="55" r="1.5" fill="#FFD600"/>
       
-      <!-- Spray w łapie -->
+      <!-- SPRAY W ŁAPIE -->
       <g id="spray-can" opacity="0">
-        <rect x="20" y="60" width="8" height="15" fill="#00E5FF" rx="1"/>
-        <rect x="22" y="58" width="4" height="3" fill="#000"/>
-        <circle cx="24" cy="56" r="2" fill="#FF1744"/>
+        <rect x="18" y="58" width="10" height="18" fill="#00E5FF" rx="2"/>
+        <rect x="20" y="55" width="6" height="4" fill="#000"/>
+        <circle cx="23" cy="54" r="2.5" fill="#FF1744"/>
+        <rect x="22" y="52" width="2" height="3" fill="#FF1744"/>
       </g>
       
       <rect x="65" y="42" width="18" height="4" fill="#424242" rx="1"/>
       <circle cx="83" y="44" r="4" fill="#424242"/>
       <circle cx="85" cy="40" r="2" fill="#FF5722" opacity="0.8">
         <animate attributeName="r" values="2;3;2" dur="0.5s" repeatCount="indefinite"/>
-      </circle>
-      <circle cx="87" cy="37" r="1.5" fill="#DDD" opacity="0.6">
-        <animate attributeName="cy" values="37;33;37" dur="2s" repeatCount="indefinite"/>
-        <animate attributeName="opacity" values="0.6;0;0.6" dur="2s" repeatCount="indefinite"/>
       </circle>
       
       <path d="M42 36 L48 38 L42 40 Z" fill="#000"/>
@@ -244,21 +262,20 @@
       
       <ellipse cx="33" cy="80" rx="7" ry="5" fill="#E65100"/>
       <ellipse cx="67" cy="80" rx="7" ry="5" fill="#E65100"/>
-      
       <text x="50" y="68" font-size="8" fill="#000" text-anchor="middle" font-family="Bangers" transform="rotate(-5 50 68)">SZTOS</text>
     </svg>
   </div>
 
   <div id="capy-window">
     <div id="capy-header">
-      <span>🦫 CAPY Z BLOKÓW</span>
+      <span>🦫 CAPY API</span>
       <span id="capy-close">X</span>
     </div>
     <div id="capy-messages">
-      <div class="capy-msg bot">YO YO YO! Capybara z Północy melduje się na rejonie 😎 Pytaj gdzie fura jeździ, gdzie wjebać żarcie, gdzie balet w Czewej. Jak coś nie halo to pojadę z grubej rury!</div>
+      <div class="capy-msg bot">YO YO YO! Capybara z API melduje się mordo 😎 Pytaj o co chcesz, pociągnę z bazy. A jak usiądę to otaguję Ci cały rejon!</div>
     </div>
     <div id="capy-input-area">
-      <input type="text" id="capy-input" placeholder="Nawijaj mordo...">
+      <input type="text" id="capy-input" placeholder="Nawijaj...">
       <button id="capy-send">JAZDA!</button>
     </div>
   </div>
@@ -271,8 +288,13 @@
     const capyInput = document.getElementById('capy-input');
     const capySend = document.getElementById('capy-send');
     const capyMessages = document.getElementById('capy-messages');
-    const yoyoSound = document.getElementById('yoyo-sound');
     const sprayCan = document.getElementById('spray-can');
+    const canvas = document.getElementById('spray-canvas');
+    const ctx = canvas.getContext('2d');
+    const apiStatus = document.getElementById('api-status');
+    
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
     
     let isSitting = false;
     let posX = Math.random() * (window.innerWidth - 100);
@@ -281,79 +303,108 @@
     let velY = (Math.random() - 0.5) * 3.5;
     let sprayInterval;
     
-    // "API" z bluzgami - lista kozackich odpowiedzi
-    const osiedleAPI = {
-      bluzgi: ['kurde', 'ja pierdziu', 'o żesz', 'masakra', 'w mordę', 'nie no weź', 'daj spokój'],
-      randomBluzg: function() {
-        return this.bluzgi[Math.floor(Math.random() * this.bluzgi.length)];
-      }
+    // KONFIGURACJA API - PODMIEŃ NA SWOJE
+    const API_CONFIG = {
+      url: 'https://api.openai.com/v1/chat/completions', // lub Twój endpoint
+      key: 'sk-TWOJ-KLUCZ', // UWAGA: W prodzie nie trzymaj w kodzie!
+      model: 'gpt-3.5-turbo'
     };
     
-    const czestochowaKnowledge = {
-      autobusy: `${osiedleAPI.randomBluzg()} mordo, fury MPK w Czewej:
-- 10: Wyczerpy → Dźbów, zapierdala przez centrum i Dworzec
-- 11: Kucelin → Raków, na blokowisko wozi 
-- 12: Północ → Parkitka, do galerii jak chcesz
-- 24: Wyczerpy → Mirów, ${osiedleAPI.randomBluzg()} daleko
-- 31: Czewa → Blachownia, na wioskę
+    // Mock API - zamień na prawdziwe
+    async function callOsiedleAPI(message) {
+      apiStatus.textContent = 'API: Ładuję...';
+      apiStatus.style.borderColor = '#FFD600';
       
-Bilet 20min = 3,40zł. Nie jedź na gapę bo kanary czają i będzie przypał! 
-Appka: JakDojade`,
+      // TU WKLEJ PRAWDZIWE API
+      // const response = await fetch(API_CONFIG.url, {
+      //   method: 'POST',
+      //   headers: {
+      //     'Content-Type': 'application/json',
+      //     'Authorization': `Bearer ${API_CONFIG.key}`
+      //   },
+      //   body: JSON.stringify({
+      //     model: API_CONFIG.model,
+      //     messages: [
+      //       {role: 'system', content: 'Jesteś capybarą z osiedla w Częstochowie. Mówisz slangiem, używasz "mordo", "kurde", "ja pierdziu", "sztos". Znasz Częstochowę.'},
+      //       {role: 'user', content: message}
+      //     ]
+      //   })
+      // });
+      // const data = await response.json();
+      // return data.choices[0].message.content;
       
-      restauracje: `${osiedleAPI.randomBluzg()}! Gdzie wjebać żarcie w Czewej:
-- Browar Czenstochovia - żebro + browar, Sikorskiego 34. Grubo mordo!
-- Astoria - schabowy jak u starej, Al. NMP 21. Klasyk bloków, nie ściemniam
-- Shuk - hummus, Dąbrowskiego 12. Jak chcesz zjeść fit a nie kebsa
-- Gruszka z Pietruszką - Śląska 12. Drogo jak ${osiedleAPI.randomBluzg()} ale sztos
-- Kebab u Turka na Dworcu - 2 w nocy po balecie. Ratuje życie`,
+      // MOCK - usuń jak podepniesz prawdziwe API
+      await new Promise(r => setTimeout(r, 800));
+      const mockResponses = {
+        fura: `Kurde mordo, fury MPK: 10 z Wyczerpów na Dźbów zapierdala, 11 na Raków, 12 na Parkitkę. Bilet 3,40zł, nie jedź na gapę bo będzie przypał!`,
+        żarcie: `Ja pierdziu gdzie wjebać? Browar Czenstochovia na Sikorskiego - żebro + browar sztos! Astoria schabowy jak u starej. Kebab u Turka na Dworcu 2 w nocy - klasyk mordo!`,
+        balet: `O żesz gdzie balet? Rura na NMP, w weekendy grubo. Klub Politechnik jak studiujesz. Irish Pub na piwko. Latem Plaża Miejska - w mordę dobry klimacik!`,
+        default: `Elo mordo! ${['Kurde', 'Ja pierdziu', 'O żesz', 'W mordę'][Math.floor(Math.random()*4)]} nie czaję. Pytaj: fura, żarcie, balet, co robić w Czewej!`
+      };
       
-      balet: `Gdzie balet w Czewej ${osiedleAPI.randomBluzg()}:
-- Rura - klub, Al. NMP. W weekendy grubo, lasek od cholery
-- Klub Politechnik - jak studiujesz to tanio wbijesz
-- Irish Pub - piwko + mecz, Dąbrowskiego. Na spokojnie
-- Browar Czenstochovia - nie demolka, kultura
-- Latem: Plaża Miejska przy Warcie, ${osiedleAPI.randomBluzg()} dobry klimacik`,
+      const msg = message.toLowerCase();
+      let response = mockResponses.default;
+      if (msg.includes('fura') || msg.includes('autobus') || msg.includes('mpk')) response = mockResponses.fura;
+      else if (msg.includes('żarc') || msg.includes('jedz') || msg.includes('kebab')) response = mockResponses.żarcie;
+      else if (msg.includes('balet') || msg.includes('melan') || msg.includes('klub')) response = mockResponses.balet;
       
-      atrakcje: `Co robić w Czewej żeby nie było lipy ${osiedleAPI.randomBluzg()}:
-- Jasna Góra - wejdź na mury, widok kozak
-- Muzeum Zapałek - serio, jedyne w EU. Dla beki warto, nie żartuję
-- Park Staszica - na chill z ziomkami
-- Zalew Poraj 20km - latem plaża, piwko, ${osiedleAPI.randomBluzg()} dobrze`,
-      
-      default: `Elo! ${osiedleAPI.randomBluzg()} pytaj mnie: "fura" = autobusy, "żarcie" = gdzie wjebać, "balet" = gdzie melanż. Nawijam jak z bloków, bez spiny 🦫`
-    };
+      apiStatus.textContent = 'API: OK';
+      apiStatus.style.borderColor = '#00E5FF';
+      return response;
+    }
 
-    // Syntezator mowy - YO YO YO
+    // YO YO YO dźwięk
     function playYoYoYo() {
       if ('speechSynthesis' in window) {
-        const msg = new SpeechSynthesisUtterance('Yo yo yo');
+        const msg = new SpeechSynthesisUtterance('Yo yo yo mordo');
         msg.lang = 'pl-PL';
-        msg.pitch = 0.8;
-        msg.rate = 1.2;
-        msg.volume = 0.6;
+        msg.pitch = 0.7;
+        msg.rate = 1.3;
+        msg.volume = 0.8;
         speechSynthesis.speak(msg);
       }
     }
 
-    // Spray tag efekt
+    // SPRAY SYSTEM - taguje po całym ekranie
     function sprayTag() {
-      const tags = ['SZTOS', 'CZEWA', 'KOZAK', 'MORDO', 'ELO', 'GIT'];
+      const tags = ['SZTOS', 'CZEWA', 'KOZAK', 'MORDO', 'ELO', 'GIT', 'RESPEKT', 'BLOKI', 'PÓŁNOC', 'RAKÓW'];
+      const colors = ['#FF1744', '#00E5FF', '#FFD600', '#76FF03', '#E91E63'];
       const tag = tags[Math.floor(Math.random() * tags.length)];
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      
+      const x = Math.random() * (window.innerWidth - 200) + 100;
+      const y = Math.random() * (window.innerHeight - 200) + 100;
+      const rotation = (Math.random() - 0.5) * 30;
+      
+      // Spray particles
+      for (let i = 0; i < 15; i++) {
+        setTimeout(() => {
+          const particle = document.createElement('div');
+          particle.className = 'spray-particle';
+          particle.style.left = (x + (Math.random() - 0.5) * 60) + 'px';
+          particle.style.top = (y + (Math.random() - 0.5) * 60) + 'px';
+          particle.style.background = color;
+          document.body.appendChild(particle);
+          setTimeout(() => particle.remove(), 1500);
+        }, i * 30);
+      }
+      
+      // Tag text
       const sprayEl = document.createElement('div');
       sprayEl.className = 'spray-tag';
       sprayEl.textContent = tag;
-      sprayEl.style.left = (posX + 50) + 'px';
-      sprayEl.style.top = (posY - 20) + 'px';
+      sprayEl.style.left = x + 'px';
+      sprayEl.style.top = y + 'px';
+      sprayEl.style.color = color;
+      sprayEl.style.transform = `rotate(${rotation}deg)`;
       document.body.appendChild(sprayEl);
-      setTimeout(() => sprayEl.remove(), 2000);
+      setTimeout(() => sprayEl.remove(), 3000);
     }
 
     function moveCapy() {
       if (isSitting) return;
-      
       posX += velX;
       posY += velY;
-      
       if (posX <= 0 || posX >= window.innerWidth - 100) {
         velX *= -1;
         velX += (Math.random() - 0.5) * 1;
@@ -362,41 +413,34 @@ Appka: JakDojade`,
         velY *= -1;
         velY += (Math.random() - 0.5) * 1;
       }
-      
       velX = Math.max(-4, Math.min(4, velX));
       velY = Math.max(-4, Math.min(4, velY));
-      
       capy.style.left = posX + 'px';
       capy.style.top = posY + 'px';
       capy.style.transform = velX > 0 ? 'scaleX(-1) rotate(5deg)' : 'scaleX(1) rotate(-5deg)';
-      
       requestAnimationFrame(moveCapy);
     }
     
-    function capyRespond(text) {
-      const msg = text.toLowerCase();
-      let response = czestochowaKnowledge.default;
-      
-      if (msg.includes('fura') || msg.includes('autobus') || msg.includes('mpk') || msg.includes('dojad')) {
-        response = czestochowaKnowledge.autobusy;
-      } else if (msg.includes('żarc') || msg.includes('jedz') || msg.includes('restaur') || msg.includes('obiad') || msg.includes('kebab') || msg.includes('wjeba')) {
-        response = czestochowaKnowledge.restauracje;
-      } else if (msg.includes('balet') || msg.includes('melan') || msg.includes('klub') || msg.includes('piw') || msg.includes('imprez')) {
-        response = czestochowaKnowledge.balet;
-      } else if (msg.includes('atrakc') || msg.includes('zobaczy') || msg.includes('robić') || msg.includes('zwiedz') || msg.includes('jasna')) {
-        response = czestochowaKnowledge.atrakcje;
-      } else if (msg.includes('siema') || msg.includes('elo') || msg.includes('co tam') || msg.includes('yo')) {
-        response = `YO YO YO mordo! ${osiedleAPI.randomBluzg()} wszystko git? 😎 Pytaj o fury, żarcie, balet. Znam rejon lepiej niż dzielnicowy!`;
-      } else {
-        response = `${osiedleAPI.randomBluzg()} nie czaję o co kaman. Pytaj: "fura", "żarcie", "balet", "co robić". Albo napisz "elo" to pogadamy!`;
+    async function capyRespond(text) {
+      addMessage('Chwila mordo, dzwonię do ziomków...', 'bot typing');
+      try {
+        const response = await callOsiedleAPI(text);
+        capyMessages.removeChild(capyMessages.lastChild);
+        addMessage(response, 'bot');
+      } catch (err) {
+        capyMessages.removeChild(capyMessages.lastChild);
+        addMessage(`Kurde mordo, API się wywaliło: ${err.message}`, 'bot');
+        apiStatus.textContent = 'API: Błąd';
+        apiStatus.style.borderColor = '#FF1744';
       }
-      
-      addMessage(response, 'bot');
     }
     
     function addMessage(text, sender) {
       const msg = document.createElement('div');
       msg.className = `capy-msg ${sender}`;
+      if (sender === 'bot typing') {
+        msg.className = 'capy-msg bot typing';
+      }
       msg.textContent = text;
       capyMessages.appendChild(msg);
       capyMessages.scrollTop = capyMessages.scrollHeight;
@@ -407,12 +451,11 @@ Appka: JakDojade`,
       if (!text) return;
       addMessage(text, 'user');
       capyInput.value = '';
-      setTimeout(() => capyRespond(text), 500);
+      capyRespond(text);
     }
     
     capy.addEventListener('click', () => {
-      playYoYoYo(); // YO YO YO przy każdym kliknięciu
-      
+      playYoYoYo();
       if (!isSitting) {
         isSitting = true;
         capy.classList.add('sitting');
@@ -420,11 +463,9 @@ Appka: JakDojade`,
         capy.style.left = (window.innerWidth - 180) + 'px';
         capy.style.top = (window.innerHeight - 220) + 'px';
         capy.style.transform = 'scaleX(1) rotate(0deg)';
-        
-        // Pokaz spray w łapie i zacznij tagować co 3 sekundy
         sprayCan.setAttribute('opacity', '1');
-        sprayTag(); // pierwszy tag od razu
-        sprayInterval = setInterval(sprayTag, 3000);
+        sprayTag();
+        sprayInterval = setInterval(sprayTag, 2500); // taguje co 2.5s
       }
     });
     
@@ -442,7 +483,11 @@ Appka: JakDojade`,
       if (e.key === 'Enter') handleSend();
     });
     
-    // Start
+    window.addEventListener('resize', () => {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    });
+    
     capy.style.left = posX + 'px';
     capy.style.top = posY + 'px';
     moveCapy();
